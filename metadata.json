@@ -1,0 +1,6 @@
+{
+  "name": "RxMaker - Medical Prescription Generator",
+  "description": "Professional instant prescription builder with smart medicine frequency scheduler, customizable doctor clinic header, live A4 print preview, and PDF export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
