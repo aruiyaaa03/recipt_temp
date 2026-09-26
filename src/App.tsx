@@ -17,6 +17,7 @@ import {
 import { Header } from './components/Header';
 import { PrescriptionEditor } from './components/PrescriptionEditor';
 import { PrescriptionPreview } from './components/PrescriptionPreview';
+import { PrescriptionSheet } from './components/PrescriptionSheet';
 import { DoctorSettingsModal } from './components/DoctorSettingsModal';
 import { TemplatesModal } from './components/TemplatesModal';
 import { NewPrescriptionConfirmModal } from './components/NewPrescriptionConfirmModal';
@@ -106,7 +107,12 @@ export default function App() {
 
   // Print prescription
   const handlePrint = () => {
-    window.print();
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+    setTimeout(() => {
+      window.print();
+    }, 50);
   };
 
   // Download PDF
@@ -114,157 +120,169 @@ export default function App() {
     try {
       setIsGeneratingPdf(true);
       const filename = `Prescription_${prescriptionData.rxNumber || 'RX'}.pdf`;
-      await exportPrescriptionToPdf('prescription-print-wrapper', filename);
+      await exportPrescriptionToPdf('prescription-clean-print-sheet', filename);
       showToast(language === 'bn' ? `${filename} ডাউনলোড সম্পন্ন!` : `Saved ${filename} successfully!`);
     } catch (err) {
       console.error('PDF export failed:', err);
-      showToast(language === 'bn' ? 'PDF তৈরি করতে ব্যর্থ হয়েছে। অনুগ্রহ করে প্রিন্ট অপশন ব্যবহার করুন।' : 'PDF generation error. You can also use Print -> Save as PDF.');
+      showToast(language === 'bn' ? 'PDF তৈরিতে সমস্যা হয়েছে। প্রিন্ট অপশনটি ব্যবহার করে Save as PDF করতে পারেন।' : 'PDF generation error. You can also use Print -> Save as PDF.');
     } finally {
       setIsGeneratingPdf(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-100/80 flex flex-col font-sans">
-      {/* Top Header */}
-      <Header
-        onNewPrescription={() => setIsNewConfirmOpen(true)}
-        onOpenSettings={() => setIsSettingsOpen(true)}
-        onOpenTemplates={() => setIsTemplatesOpen(true)}
-        onPrint={handlePrint}
-        onDownloadPdf={handleDownloadPdf}
-        isGeneratingPdf={isGeneratingPdf}
-        language={language}
-        onToggleLanguage={() => setLanguage(prev => (prev === 'en' ? 'bn' : 'en'))}
-        activeMobileTab={activeMobileTab}
-        onSelectMobileTab={setActiveMobileTab}
-        rxNumber={prescriptionData.rxNumber}
-      />
+    <>
+      {/* 🖥️ INTERACTIVE SCREEN UI (Hidden during Print) */}
+      <div id="app-screen-container" className="min-h-screen bg-slate-100/80 flex flex-col font-sans">
+        {/* Top Header */}
+        <Header
+          onNewPrescription={() => setIsNewConfirmOpen(true)}
+          onOpenSettings={() => setIsSettingsOpen(true)}
+          onOpenTemplates={() => setIsTemplatesOpen(true)}
+          onPrint={handlePrint}
+          onDownloadPdf={handleDownloadPdf}
+          isGeneratingPdf={isGeneratingPdf}
+          language={language}
+          onToggleLanguage={() => setLanguage(prev => (prev === 'en' ? 'bn' : 'en'))}
+          activeMobileTab={activeMobileTab}
+          onSelectMobileTab={setActiveMobileTab}
+          rxNumber={prescriptionData.rxNumber}
+        />
 
-      {/* Main Dual-Pane Workspace */}
-      <main className="flex-1 max-w-[1600px] w-full mx-auto p-3 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* LEFT PANE: PRESCRIPTION EDITOR (50% on desktop) */}
-        <section 
-          className={`lg:col-span-6 space-y-4 ${
-            activeMobileTab === 'editor' ? 'block' : 'hidden lg:block'
-          }`}
-        >
-          {/* Editor Header Banner & Quick Jump Bar */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center justify-between no-print">
-            <div className="flex items-center gap-2">
-              <Edit3 className="w-4 h-4 text-teal-700" />
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
-                {language === 'bn' ? 'প্রেসক্রিপশন এডিটর' : 'Prescription Editor'}
-              </h2>
+        {/* Main Dual-Pane Workspace */}
+        <main className="flex-1 max-w-[1600px] w-full mx-auto p-3 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          {/* LEFT PANE: PRESCRIPTION EDITOR (50% on desktop) */}
+          <section 
+            className={`lg:col-span-6 space-y-4 ${
+              activeMobileTab === 'editor' ? 'block' : 'hidden lg:block'
+            }`}
+          >
+            {/* Editor Header Banner & Quick Jump Bar */}
+            <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center justify-between no-print">
+              <div className="flex items-center gap-2">
+                <Edit3 className="w-4 h-4 text-teal-700" />
+                <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wide">
+                  {language === 'bn' ? 'প্রেসক্রিপশন এডিটর' : 'Prescription Editor'}
+                </h2>
+              </div>
+
+              <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>{language === 'bn' ? 'লাইভ সেভ হচ্ছে' : 'Live Sync Active'}</span>
+              </div>
             </div>
 
-            <div className="flex items-center gap-1.5 text-xs text-slate-500">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>{language === 'bn' ? 'লাইভ সেভ হচ্ছে' : 'Live Sync Active'}</span>
-            </div>
-          </div>
-
-          {/* Core Interactive Editor */}
-          <PrescriptionEditor
-            data={prescriptionData}
-            onChange={setPrescriptionData}
-            language={language}
-          />
-        </section>
-
-        {/* RIGHT PANE: LIVE PRESCRIPTION PREVIEW (50% on desktop) */}
-        <section 
-          className={`lg:col-span-6 sticky top-20 ${
-            activeMobileTab === 'preview' ? 'block' : 'hidden lg:block'
-          } h-[calc(100vh-5.5rem)]`}
-        >
-          <div className="h-full bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
-            <PrescriptionPreview
+            {/* Core Interactive Editor */}
+            <PrescriptionEditor
               data={prescriptionData}
               onChange={setPrescriptionData}
-              onPrint={handlePrint}
-              onDownloadPdf={handleDownloadPdf}
-              isGeneratingPdf={isGeneratingPdf}
               language={language}
             />
+          </section>
+
+          {/* RIGHT PANE: LIVE PRESCRIPTION PREVIEW (50% on desktop) */}
+          <section 
+            className={`lg:col-span-6 sticky top-20 ${
+              activeMobileTab === 'preview' ? 'block' : 'hidden lg:block'
+            } h-[calc(100vh-5.5rem)]`}
+          >
+            <div className="h-full bg-white rounded-xl border border-slate-200 shadow-sm flex flex-col overflow-hidden">
+              <PrescriptionPreview
+                data={prescriptionData}
+                onChange={setPrescriptionData}
+                onPrint={handlePrint}
+                onDownloadPdf={handleDownloadPdf}
+                isGeneratingPdf={isGeneratingPdf}
+                language={language}
+              />
+            </div>
+          </section>
+        </main>
+
+        {/* Mobile Floating Action Bar */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 flex items-center justify-around gap-2 no-print shadow-lg">
+          <button
+            type="button"
+            onClick={() => setActiveMobileTab(prev => prev === 'editor' ? 'preview' : 'editor')}
+            className="flex-1 py-2 px-3 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center gap-1.5 transition-colors"
+          >
+            {activeMobileTab === 'editor' ? (
+              <>
+                <Eye className="w-4 h-4 text-teal-700" />
+                <span>{language === 'bn' ? 'প্রিভিউ দেখুন' : 'View Preview'}</span>
+              </>
+            ) : (
+              <>
+                <Edit3 className="w-4 h-4 text-teal-700" />
+                <span>{language === 'bn' ? 'এডিটে ফিরুন' : 'Back to Edit'}</span>
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={handlePrint}
+            className="py-2 px-4 text-xs font-bold text-teal-900 bg-teal-50 hover:bg-teal-100 rounded-lg flex items-center gap-1.5 transition-colors"
+          >
+            <Printer className="w-4 h-4 text-teal-700" />
+            <span>{language === 'bn' ? 'প্রিন্ট' : 'Print'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            disabled={isGeneratingPdf}
+            className="py-2 px-4 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50"
+          >
+            <Download className="w-4 h-4" />
+            <span>PDF</span>
+          </button>
+        </div>
+
+        {/* Modals */}
+        <DoctorSettingsModal
+          isOpen={isSettingsOpen}
+          onClose={() => setIsSettingsOpen(false)}
+          profile={prescriptionData.doctor}
+          onSaveProfile={handleSaveDoctorProfile}
+          currentTheme={prescriptionData.theme}
+          onChangeTheme={handleChangeTheme}
+          currentColor={prescriptionData.primaryColor}
+          onChangeColor={handleChangeColor}
+          language={language}
+        />
+
+        <TemplatesModal
+          isOpen={isTemplatesOpen}
+          onClose={() => setIsTemplatesOpen(false)}
+          onSelectTemplate={handleSelectTemplate}
+          language={language}
+        />
+
+        <NewPrescriptionConfirmModal
+          isOpen={isNewConfirmOpen}
+          onClose={() => setIsNewConfirmOpen(false)}
+          onConfirm={handleConfirmNewPrescription}
+          language={language}
+        />
+
+        {/* Toast Notification */}
+        {toastMessage && (
+          <div className="fixed bottom-16 right-4 sm:bottom-6 sm:right-6 z-50 bg-slate-900 text-white text-xs font-medium px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
+            <span>{toastMessage}</span>
           </div>
-        </section>
-      </main>
-
-      {/* Mobile Floating Action Bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 flex items-center justify-around gap-2 no-print shadow-lg">
-        <button
-          type="button"
-          onClick={() => setActiveMobileTab(prev => prev === 'editor' ? 'preview' : 'editor')}
-          className="flex-1 py-2 px-3 text-xs font-bold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center gap-1.5 transition-colors"
-        >
-          {activeMobileTab === 'editor' ? (
-            <>
-              <Eye className="w-4 h-4 text-teal-700" />
-              <span>{language === 'bn' ? 'প্রিভিউ দেখুন' : 'View Preview'}</span>
-            </>
-          ) : (
-            <>
-              <Edit3 className="w-4 h-4 text-teal-700" />
-              <span>{language === 'bn' ? 'এডিটে ফিরুন' : 'Back to Edit'}</span>
-            </>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={handlePrint}
-          className="py-2 px-4 text-xs font-bold text-teal-900 bg-teal-50 hover:bg-teal-100 rounded-lg flex items-center gap-1.5 transition-colors"
-        >
-          <Printer className="w-4 h-4 text-teal-700" />
-          <span>{language === 'bn' ? 'প্রিন্ট' : 'Print'}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={handleDownloadPdf}
-          disabled={isGeneratingPdf}
-          className="py-2 px-4 text-xs font-bold text-white bg-teal-700 hover:bg-teal-800 rounded-lg flex items-center gap-1.5 transition-colors disabled:opacity-50"
-        >
-          <Download className="w-4 h-4" />
-          <span>PDF</span>
-        </button>
+        )}
       </div>
 
-      {/* Modals */}
-      <DoctorSettingsModal
-        isOpen={isSettingsOpen}
-        onClose={() => setIsSettingsOpen(false)}
-        profile={prescriptionData.doctor}
-        onSaveProfile={handleSaveDoctorProfile}
-        currentTheme={prescriptionData.theme}
-        onChangeTheme={handleChangeTheme}
-        currentColor={prescriptionData.primaryColor}
-        onChangeColor={handleChangeColor}
-        language={language}
-      />
-
-      <TemplatesModal
-        isOpen={isTemplatesOpen}
-        onClose={() => setIsTemplatesOpen(false)}
-        onSelectTemplate={handleSelectTemplate}
-        language={language}
-      />
-
-      <NewPrescriptionConfirmModal
-        isOpen={isNewConfirmOpen}
-        onClose={() => setIsNewConfirmOpen(false)}
-        onConfirm={handleConfirmNewPrescription}
-        language={language}
-      />
-
-      {/* Toast Notification */}
-      {toastMessage && (
-        <div className="fixed bottom-16 right-4 sm:bottom-6 sm:right-6 z-50 bg-slate-900 text-white text-xs font-medium px-4 py-2.5 rounded-xl shadow-xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
-          <CheckCircle2 className="w-4 h-4 text-teal-400 shrink-0" />
-          <span>{toastMessage}</span>
-        </div>
-      )}
-    </div>
+      {/* 🖨️ DEDICATED CLEAN A4 PRINT & PDF TARGET (100% Print-safe, Zero Clipping) */}
+      <div id="prescription-print-root" aria-hidden="true">
+        <PrescriptionSheet
+          data={prescriptionData}
+          isEditable={false}
+          id="prescription-clean-print-sheet"
+        />
+      </div>
+    </>
   );
 }

@@ -1,6 +1,7 @@
 import { DoctorProfile, MedicineItem } from '../types/prescription';
 import { TIMING_TRANSLATIONS, FREQUENCY_TRANSLATIONS } from '../data/medicineCatalog';
 import jsPDF from 'jspdf';
+import { toPng } from 'html-to-image';
 import html2canvas from 'html2canvas';
 
 const DOCTOR_PROFILE_KEY = 'rx_maker_doctor_profile_v1';
@@ -162,38 +163,111 @@ export function buildAutoInstruction(
 }
 
 export async function exportPrescriptionToPdf(elementId: string, filename: string): Promise<void> {
-  const element = document.getElementById(elementId);
-  if (!element) {
-    throw new Error('Prescription print element not found');
+  const printRoot = document.getElementById('prescription-print-root');
+  
+  // Prefer the clean print sheet; fall back to interactive wrapper if needed
+  const targetElement = document.getElementById(elementId) || 
+                        document.getElementById('prescription-clean-print-sheet') || 
+                        document.getElementById('prescription-print-wrapper');
+
+  if (!targetElement) {
+    throw new Error('Prescription element not found');
   }
 
-  // Render high-res canvas (scale 2 for retina / high-DPI crisp print resolution)
-  const canvas = await html2canvas(element, {
-    scale: 2,
-    useCORS: true,
-    logging: false,
-    backgroundColor: '#ffffff'
-  });
-
-  const imgData = canvas.toDataURL('image/png');
-  const pdf = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4'
-  });
-
-  const pdfWidth = pdf.internal.pageSize.getWidth();
-  const pdfHeight = pdf.internal.pageSize.getHeight();
-  const imgWidth = pdfWidth;
-  const imgHeight = (canvas.height * pdfWidth) / canvas.width;
-
-  // Center or scale to fit A4 neatly
-  if (imgHeight > pdfHeight) {
-    const scaledWidth = (canvas.width * pdfHeight) / canvas.height;
-    pdf.addImage(imgData, 'PNG', (pdfWidth - scaledWidth) / 2, 0, scaledWidth, pdfHeight);
-  } else {
-    pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+  // Ensure all web fonts (Hind Siliguri, Plus Jakarta Sans, etc.) are fully settled
+  if (document.fonts) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      // ignore font loading timeouts
+    }
   }
 
-  pdf.save(filename.endsWith('.pdf') ? filename : `${filename}.pdf`);
+  // Enable high-fidelity capture state: 100% opacity in normal coordinate space
+  if (printRoot) {
+    printRoot.classList.add('pdf-capturing');
+  }
+
+  try {
+    // Brief frame wait so layout and SVG icons render completely
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    let imgData: string | null = null;
+
+    try {
+      // Primary High-Fidelity Engine: html-to-image
+      // Uses browser's native SVG ForeignObject renderer, perfectly supporting oklch colors and Bengali fonts
+      imgData = await toPng(targetElement, {
+        quality: 0.98,
+        pixelRatio: 2.2, // Crisp retina resolution for small medicine text & doctor seals
+        backgroundColor: '#ffffff',
+        filter: (node) => {
+          if (node instanceof HTMLElement) {
+            if (node.classList.contains('no-print')) return false;
+            if (node.tagName === 'BUTTON') return false;
+            if (node.tagName === 'INPUT' && (node as HTMLInputElement).type === 'file') return false;
+          }
+          return true;
+        }
+      });
+    } catch (primaryErr) {
+      console.warn('Primary html-to-image rendering issue, attempting sanitized canvas fallback:', primaryErr);
+
+      // Secondary Fallback Engine: html2canvas with oklch-to-rgb translation
+      const canvas = await html2canvas(targetElement, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        logging: false,
+        onclone: (clonedDoc) => {
+          // Resolve modern CSS colors (oklch) to standard rgb for html2canvas
+          const helper = clonedDoc.createElement('div');
+          clonedDoc.body.appendChild(helper);
+          const elements = clonedDoc.querySelectorAll('*');
+          elements.forEach(el => {
+            const htmlEl = el as HTMLElement;
+            const comp = window.getComputedStyle(el);
+            ['color', 'backgroundColor', 'borderColor'].forEach(prop => {
+              const val = comp[prop as any];
+              if (typeof val === 'string' && val.includes('oklch')) {
+                try {
+                  helper.style[prop as any] = val;
+                  htmlEl.style[prop as any] = window.getComputedStyle(helper)[prop as any] || '#000000';
+                } catch {
+                  // ignore
+                }
+              }
+            });
+          });
+          helper.remove();
+        }
+      });
+
+      imgData = canvas.toDataURL('image/png', 0.98);
+    }
+
+    if (!imgData || imgData === 'data:,' || imgData.length < 500) {
+      throw new Error('Generated canvas image was empty');
+    }
+
+    // Initialize standard A4 PDF (210mm x 297mm)
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4',
+      compress: true
+    });
+
+    const pdfWidth = pdf.internal.pageSize.getWidth(); // 210mm
+    const pdfHeight = pdf.internal.pageSize.getHeight(); // 297mm
+
+    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+    const safeFilename = filename.endsWith('.pdf') ? filename : `${filename}.pdf`;
+    pdf.save(safeFilename);
+  } finally {
+    if (printRoot) {
+      printRoot.classList.remove('pdf-capturing');
+    }
+  }
 }
