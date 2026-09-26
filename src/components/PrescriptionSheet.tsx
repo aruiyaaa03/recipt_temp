@@ -164,7 +164,7 @@ export const PrescriptionSheet: React.FC<PrescriptionSheetProps> = ({
       {/* 🩺 HEADER SECTION */}
       {theme === 'modern_banner' ? (
         <header 
-          className="rounded-xl p-5 mb-4 text-white shadow-sm flex items-start justify-between gap-4 avoid-break"
+          className="prescription-clinic-header rounded-xl p-5 mb-4 text-white shadow-sm flex items-start justify-between gap-4 avoid-break"
           style={{ backgroundColor: primaryColor }}
         >
           <div className="flex items-start gap-4 flex-1">
@@ -276,7 +276,7 @@ export const PrescriptionSheet: React.FC<PrescriptionSheetProps> = ({
           </div>
         </header>
       ) : theme === 'hospital_pad' ? (
-        <header className="border-b-2 pb-3 mb-3 avoid-break" style={{ borderColor: primaryColor }}>
+        <header className="prescription-clinic-header border-b-2 pb-3 mb-3 avoid-break flex flex-col" style={{ borderColor: primaryColor }}>
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3.5 flex-1">
               {renderLogo()}
@@ -373,7 +373,7 @@ export const PrescriptionSheet: React.FC<PrescriptionSheetProps> = ({
           </div>
         </header>
       ) : theme === 'framed_royal' ? (
-        <header className="border-b pb-3 mb-3 text-center avoid-break" style={{ borderColor: primaryColor }}>
+        <header className="prescription-clinic-header border-b pb-3 mb-3 text-center avoid-break block" style={{ borderColor: primaryColor }}>
           <div className="flex flex-col items-center justify-center">
             {renderLogo()}
             <h2 
@@ -455,7 +455,7 @@ export const PrescriptionSheet: React.FC<PrescriptionSheetProps> = ({
           </div>
         </header>
       ) : (
-        <header className="border-b-2 pb-3 mb-3 avoid-break" style={{ borderColor: primaryColor }}>
+        <header className="prescription-clinic-header border-b-2 pb-3 mb-3 avoid-break" style={{ borderColor: primaryColor }}>
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3 flex-1">
               {renderLogo()}

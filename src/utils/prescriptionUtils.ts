@@ -201,6 +201,7 @@ export async function exportPrescriptionToPdf(elementId: string, filename: strin
         quality: 0.98,
         pixelRatio: 2.2, // Crisp retina resolution for small medicine text & doctor seals
         backgroundColor: '#ffffff',
+        skipFonts: true, // Prevents CORS SecurityError when inspecting cross-origin Google Fonts stylesheets
         filter: (node) => {
           if (node instanceof HTMLElement) {
             if (node.classList.contains('no-print')) return false;

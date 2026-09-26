@@ -69,20 +69,15 @@
     print-color-adjust: exact !important;
   }
 
-  /* CRITICAL: Hide all interactive screen elements, toolbars, editor, headers, buttons */
+  /* CRITICAL: Hide only the app screen interface and elements marked no-print */
   #app-screen-container,
   .no-print,
-  button,
-  input,
-  header,
-  nav,
-  aside,
   [data-no-print] {
     display: none !important;
     visibility: hidden !important;
   }
 
-  /* CRITICAL: Exclusively display the clean A4 prescription sheet */
+  /* CRITICAL: Ensure the entire printable prescription and all its child sections are 100% visible */
   #prescription-print-root {
     display: block !important;
     visibility: visible !important;
@@ -97,6 +92,25 @@
     opacity: 1 !important;
     overflow: visible !important;
     box-shadow: none !important;
+  }
+
+  #prescription-print-root *,
+  #prescription-clean-print-sheet,
+  #prescription-clean-print-sheet * {
+    visibility: visible !important;
+  }
+
+  /* Explicitly enforce display for the doctor and clinic header */
+  #prescription-clean-print-sheet header,
+  #prescription-clean-print-sheet .prescription-clinic-header {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+
+  #prescription-clean-print-sheet header.flex,
+  #prescription-clean-print-sheet .prescription-clinic-header.flex {
+    display: flex !important;
   }
 
   #prescription-clean-print-sheet {
